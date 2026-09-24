@@ -4,5 +4,13 @@ neo4j
 pydantic 
 python-multipart 
 requests 
+python-dotenv 
 tree-sitter 
-tree-sitter-languages
+tree-sitter-languages 
+tree-sitter-java 
+tree-sitter-python 
+tree-sitter-javascript 
+tree-sitter-php 
+scikit-learn 
+pandas 
+numpy
