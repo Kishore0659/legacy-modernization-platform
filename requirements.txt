@@ -3,4 +3,6 @@ uvicorn
 neo4j 
 pydantic 
 python-multipart 
-requests
+requests 
+tree-sitter 
+tree-sitter-languages
