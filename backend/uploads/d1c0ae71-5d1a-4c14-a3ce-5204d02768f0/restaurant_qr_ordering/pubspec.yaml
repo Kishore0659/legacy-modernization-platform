@@ -1,0 +1,60 @@
+name: restaurant_qr_ordering
+description: "Restaurant QR Code Ordering System - Flutter + Firebase, Clean Architecture / MVVM"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.6
+
+  # Firebase
+  firebase_core: ^2.27.0
+  firebase_auth: ^4.17.4
+  cloud_firestore: ^4.15.5
+  firebase_messaging: ^14.7.15
+  firebase_storage: ^11.6.9
+
+  # State management
+  provider: ^6.1.2
+
+  # QR
+  qr_flutter: ^4.1.0
+  mobile_scanner: ^3.5.7
+  app_links: ^3.5.0          # deep link handling: restaurant://menu?table=1
+
+  # UI / UX
+  google_fonts: ^6.2.1
+  cached_network_image: ^3.3.1
+  shimmer: ^3.0.0
+  flutter_svg: ^2.0.10+1
+  lottie: ^3.1.0
+  badges: ^3.1.2
+  flutter_slidable: ^3.1.0
+  animations: ^2.0.11
+
+  # Utilities
+  intl: ^0.19.0
+  uuid: ^4.3.3
+  equatable: ^2.0.5
+  connectivity_plus: ^5.0.2
+  shared_preferences: ^2.2.2
+  logger: ^2.2.0
+  collection: ^1.18.0
+
+  # Local notifications (foreground FCM display)
+  flutter_local_notifications: ^17.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.2
+  build_runner: ^2.4.8
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/

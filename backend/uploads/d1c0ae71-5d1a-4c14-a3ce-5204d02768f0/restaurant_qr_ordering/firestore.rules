@@ -1,0 +1,94 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------- Helper functions ----------
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isStaff() {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function staffRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    function isChef() {
+      return isStaff() && staffRole() == 'chef';
+    }
+
+    function isAdmin() {
+      return isStaff() && staffRole() == 'admin';
+    }
+
+    function isChefOrAdmin() {
+      return isChef() || isAdmin();
+    }
+
+    // ---------- users (chef / admin profiles) ----------
+    match /users/{userId} {
+      // Staff can read their own profile; admins can read all.
+      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      // Profile creation happens via a trusted server-side flow / admin
+      // console in production; for the assignment/demo, allow a user to
+      // create only their own doc, and never change their own role.
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      allow update: if isSignedIn() && request.auth.uid == userId &&
+        request.resource.data.role == resource.data.role;
+      allow delete: if isAdmin();
+    }
+
+    // ---------- tables ----------
+    match /tables/{tableId} {
+      allow read: if true; // menu/table status is public (QR scan, no auth needed to view)
+      allow write: if isChefOrAdmin();
+    }
+
+    // ---------- categories ----------
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ---------- menu ----------
+    match /menu/{menuId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ---------- offers ----------
+    match /offers/{offerId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ---------- orders ----------
+    match /orders/{orderId} {
+      // Any signed-in user (anonymous customer or staff) can read orders.
+      // Customers only ever query their own order by id (enforced client
+      // side); staff need full visibility for the dashboards.
+      allow read: if isSignedIn();
+
+      // Customers (anonymous auth) may create an order.
+      allow create: if isSignedIn() &&
+        request.resource.data.status == 'pending' &&
+        request.resource.data.totalAmount is number &&
+        request.resource.data.totalAmount > 0 &&
+        request.resource.data.tableId is string &&
+        request.resource.data.orderItems is list &&
+        request.resource.data.orderItems.size() > 0;
+
+      // Only chef/admin can transition order status.
+      allow update: if isChefOrAdmin() ||
+        // allow a customer to attach their FCM token to their own order
+        (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['customerFcmToken']));
+
+      allow delete: if isAdmin();
+    }
+  }
+}
