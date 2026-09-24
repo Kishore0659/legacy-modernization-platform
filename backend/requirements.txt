@@ -13,4 +13,8 @@ tree-sitter-javascript
 tree-sitter-php 
 scikit-learn 
 pandas 
-numpy
+numpy 
+langgraph 
+langchain 
+langchain-core 
+langchain-community
