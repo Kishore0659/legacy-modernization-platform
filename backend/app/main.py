@@ -27,21 +27,22 @@ app = FastAPI(
 )
 
 # 1. Explicitly list Netlify and Local origins
+# main.py
+
 origins = [
     "https://legacy-modernization-platform.netlify.app",
+    "https://legacy-modernization-platform.onrender.com",
     "http://localhost:5173",
-    "http://127.0.0.1:5173",
     "http://localhost:3000",
 ]
 
-# 2. Attach CORS middleware as the FIRST middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Ensures wildcard access across browser engines
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["*"]
+    expose_headers=["*"],
 )
 
 # 3. Global Exception Handler to safeguard CORS headers on 500 crashes
