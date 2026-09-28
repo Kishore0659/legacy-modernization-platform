@@ -7,9 +7,9 @@ import shutil
 import zipfile
 import difflib
 import subprocess
-from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi import FastAPI, HTTPException, UploadFile, File, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import PlainTextResponse, StreamingResponse
+from fastapi.responses import PlainTextResponse, StreamingResponse, JSONResponse
 from pydantic import BaseModel
 
 from app.api.parser import router as parser_router
@@ -26,6 +26,7 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# 1. Explicitly list Netlify and Local origins
 origins = [
     "https://legacy-modernization-platform.netlify.app",
     "http://localhost:5173",
@@ -33,14 +34,23 @@ origins = [
     "http://localhost:3000",
 ]
 
-
+# 2. Attach CORS middleware as the FIRST middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # Ensures wildcard access across browser engines
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"]
 )
+
+# 3. Global Exception Handler to safeguard CORS headers on 500 crashes
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    return JSONResponse(
+        status_code=500,
+        content={"detail": f"Internal Server Error: {str(exc)}"},
+    )
 
 app.include_router(parser_router)
 app.include_router(dependencies_router)
@@ -75,25 +85,37 @@ def handle_remove_readonly(func, path, exc_info):
 # INGESTION ENDPOINTS (ZIP, GIT, SCRATCHPAD)
 # ==========================================
 
-# 1. Archive ZIP Ingestion
+# 1. Archive ZIP Ingestion (Safeguarded against crashes)
 @app.post("/upload")
 async def upload_zip(file: UploadFile = File(...)):
-    project_id = str(uuid.uuid4())
-    p_dir = os.path.join(UPLOAD_DIR, project_id)
-    os.makedirs(p_dir, exist_ok=True)
-
-    zip_path = os.path.join(p_dir, file.filename)
-    with open(zip_path, "wb") as f:
-        f.write(await file.read())
-
     try:
-        with zipfile.ZipFile(zip_path, "r") as z:
-            z.extractall(p_dir)
-        os.remove(zip_path)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Failed to extract zip: {e}")
+        project_id = str(uuid.uuid4())
+        p_dir = os.path.join(UPLOAD_DIR, project_id)
+        os.makedirs(p_dir, exist_ok=True)
 
-    return {"project_id": project_id, "message": "Uploaded and extracted successfully"}
+        zip_path = os.path.join(p_dir, file.filename or "uploaded.zip")
+        file_content = await file.read()
+
+        if not file_content:
+            raise HTTPException(status_code=400, detail="Uploaded file is empty.")
+
+        with open(zip_path, "wb") as f:
+            f.write(file_content)
+
+        try:
+            with zipfile.ZipFile(zip_path, "r") as z:
+                z.extractall(p_dir)
+            if os.path.exists(zip_path):
+                os.remove(zip_path)
+        except zipfile.BadZipFile:
+            raise HTTPException(status_code=400, detail="Invalid ZIP file archive format.")
+
+        return {"project_id": project_id, "message": "Uploaded and extracted successfully"}
+
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Upload processing failed: {str(e)}")
 
 
 # 2. Direct Git Repository Clone Ingestion
